@@ -2,50 +2,6 @@
 
 * Installs the web dashboarding system [Grafana](http://grafana.org/)
 
-## Get Repo Info
-
-```console
-helm repo add grafana https://grafana.github.io/helm-charts
-helm repo update
-```
-
-_See [helm repo](https://helm.sh/docs/helm/helm_repo/) for command documentation._
-
-## Installing the Chart
-
-To install the chart with the release name `my-release`:
-
-```console
-helm install my-release grafana/grafana
-```
-
-## Uninstalling the Chart
-
-To uninstall/delete the my-release deployment:
-
-```console
-helm delete my-release
-```
-
-The command removes all the Kubernetes components associated with the chart and deletes the release.
-
-## Upgrading an existing Release to a new major version
-
-A major chart version change (like v1.2.3 -> v2.0.0) indicates that there is an
-incompatible breaking change needing manual actions.
-
-### To 4.0.0 (And 3.12.1)
-
-This version requires Helm >= 2.12.0.
-
-### To 5.0.0
-
-You have to add --force to your helm upgrade command as the labels of the chart have changed.
-
-### To 6.0.0
-
-This version requires Helm >= 3.1.0.
-
 ## Configuration
 
 | Parameter                                 | Description                                   | Default                                                 |

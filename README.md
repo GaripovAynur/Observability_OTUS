@@ -134,6 +134,108 @@ Fluent Bit логически можно поделить на 6 модулей,
 
 Модуль **Routing/Output** содержит правила и адреса отправки логов. Как уже было сказано, логи можно отправлять в Elasticsearch, PostgreSQL или, например, Kafka.
 
+Файлы деплоя для fluentbit в kubernetes
+
+~~~~bash
+$ kubectl create ns monitoring
+$ git clone git@github.com:GaripovAynur/Observability_OTUS.git
+$ cd Chart/fluentbit
+~~~~
+
+
+* 01-flb-acc.yaml - ServiceAccount, ClusterRole, ClusterRoleBinding, Secret (access to elasticsearch)
+* 02-flb-cm.yaml - ConfigMap. Конфигурационные файлы fluentbit.
+* 03-flb-services.yaml - Service и Endpoints для доступа ко внешнему (за пределами кластера k8s) elasticserach.
+* 04-flb-ds.yaml - DaemonSet
+
+```yaml
+  fluent-bit.conf: |
+    [SERVICE] # Сексия
+        Flush         1 # 
+        Log_Level     info 
+        Daemon        off           # Режим демона, когда контейнер умерает, fluent-bit тоже.
+        Parsers_File  parsers.conf  # Имя парсер файла
+        HTTP_Server   On            # Включаем HTTP Server, может получить метрики двух видов Prometheus и JSON
+        HTTP_Listen   0.0.0.0 
+        HTTP_Port     2020
+    @INCLUDE input-kubernetes.conf   # Включаем 3 доп.файла см. ниже (файлы могут иметь любое название)
+    @INCLUDE filter-kubernetes.conf
+    @INCLUDE output-elasticsearch.conf
+  input-kubernetes.conf: |
+    [INPUT]
+        Name              tail  # Режим просмотр с конца файла
+        Tag               app.* # Метим тегом который будеть дальше отсылаться для обработки фильтра
+        Path              /var/log/containers/app-*.log  # Указываю где находятся логи
+        Parser            docker
+        DB                /var/log/flb-example-app.db # Сохраняет какие логи были прочитаны, в случае сбоя продолжит с того места где остановился.
+        Mem_Buf_Limit     5MB
+        Skip_Long_Lines   On
+        Refresh_Interval  10
+    [INPUT]
+        Name tail
+        Tag sysapp.gen.log.messages
+        Parser sys_log_file
+        Path /var/log/messages
+        db /var/log/messages.db
+  filter-kubernetes.conf: |
+    [FILTER]
+        Name                kubernetes
+        Match               app.* # Говорим какой поток мы отбираем (INPUT Tag) 
+        Kube_URL            https://kubernetes.default.svc.cluster.local:443 # Чтобы эту ифнормацию получить должен быть доступ к API
+        Kube_CA_File        /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        Kube_Token_File     /var/run/secrets/kubernetes.io/serviceaccount/token
+        Kube_Tag_Prefix     app.var.log.containers. # Должны писать "Match" и дальше var.log.containers.
+        Merge_Log           On  # Это нужно когда JSON логи, получаем красивый лог
+        Merge_Log_Key       log_processed # Здесь описывается с какой строкой будет начинаться каждое поля внутри одного JSON файла 
+        K8S-Logging.Parser  Off # 
+        K8S-Logging.Exclude Off
+    [FILTER]
+        Name modify
+        Match sysapp.gen.log.messages
+        Set app syslog # Тоже самое Merge_Log_Key, см.выше 
+        Set file /var/log/messages
+  output-elasticsearch.conf: | 
+    [OUTPUT]
+        Name            es
+        Match           app.*
+        Host            ${FLUENT_ELASTICSEARCH_HOST}
+        Port            ${FLUENT_ELASTICSEARCH_PORT}
+        HTTP_User       ${FLUENT_ELASTICSEARCH_USER}
+        HTTP_Passwd     ${FLUENT_ELASTICSEARCH_PASSWORD}
+        Logstash_Format On # ELASTICSEARCH говорим что отправлеяем в формате Logstash
+        Logstash_Prefix app # Индекс будет называться app
+        Replace_Dots    On
+        Retry_Limit     False # Отправляем ELASTICSEARCH пока не получит данные
+    [OUTPUT]
+        Name            es
+        Match           sysapp.gen.log.*
+        Host            ${FLUENT_ELASTICSEARCH_HOST}
+        Port            ${FLUENT_ELASTICSEARCH_PORT}
+        HTTP_User       ${FLUENT_ELASTICSEARCH_USER}
+        HTTP_Passwd     ${FLUENT_ELASTICSEARCH_PASSWORD}
+        Logstash_Format On
+        Logstash_Prefix sysapp-gen-log
+        Replace_Dots    On
+        Retry_Limit     False
+  parsers.conf: |
+    [PARSER]
+        Name        docker
+        Format      json # Т.к. json особо парсит не нужно
+        Time_Key    time # Указываем формат времени см. Time_Format 
+        Time_Format %Y-%m-%dT%H:%M:%S.%L
+        Time_Keep   On
+    [PARSER]
+        Format regex
+        Name sys_log_file # Что парсим, берем INPUT Parser
+        Regex (?<message>(?<time>[^ ]*\s{1,2}[^ ]*\s[^ ]*)\s(?<host>[a-zA-Z0-9_\/\.\-]*)\s.*)$ # Определяем регулярное выражение.
+        Time_Format %b %d %H:%M:%S
+        Time_Keep Off # Поле Time дальше не пропускаю
+        Time_Key time # Указываю в какому поле время 
+        Time_Offset +0300 # Время МСК
+
+```
+
+За основу были использованы файлы из проекта https://github.com/fluent/fluent-bit-kubernetes-logging
 
 
 
