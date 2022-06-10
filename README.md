@@ -149,8 +149,9 @@ $ kubectl creat -f ./
 * 03-flb-services.yaml - Service и Endpoints для доступа ко внешнему (за пределами кластера k8s) elasticserach.
 * 04-flb-ds.yaml - DaemonSet
 
-```s
+```yaml
   fluent-bit.conf: |
+
     [SERVICE] # Сексия
         Flush         1
         Log_Level     info 
@@ -162,7 +163,9 @@ $ kubectl creat -f ./
     @INCLUDE input-kubernetes.conf   # Включаем 3 доп.файла см. ниже (файлы могут иметь любое название)
     @INCLUDE filter-kubernetes.conf
     @INCLUDE output-elasticsearch.conf
-  input-kubernetes.conf: |
+ 
+  input-kubernetes.conf: | #
+
     [INPUT]
         Name              tail  # Режим просмотр с конца файла
         Tag               app.* # Метим тегом который будеть дальше отсылаться для обработки фильтра
@@ -178,7 +181,9 @@ $ kubectl creat -f ./
         Parser sys_log_file
         Path /var/log/messages
         db /var/log/messages.db
-  filter-kubernetes.conf: |
+  
+  filter-kubernetes.conf: | #
+
     [FILTER]
         Name                kubernetes
         Match               app.* # Говорим какой поток мы отбираем (INPUT Tag) 
@@ -195,7 +200,9 @@ $ kubectl creat -f ./
         Match sysapp.gen.log.messages
         Set app syslog # Тоже самое Merge_Log_Key, см.выше 
         Set file /var/log/messages
-  output-elasticsearch.conf: | 
+
+  output-elasticsearch.conf: | #
+
     [OUTPUT]
         Name            es
         Match           app.*
@@ -218,7 +225,9 @@ $ kubectl creat -f ./
         Logstash_Prefix sysapp-gen-log
         Replace_Dots    On
         Retry_Limit     False
-  parsers.conf: |
+  
+  parsers.conf: | #
+
     [PARSER]
         Name        docker
         Format      json # Т.к. json особо парсит не нужно
