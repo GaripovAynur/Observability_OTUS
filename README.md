@@ -149,10 +149,10 @@ $ kubectl creat -f ./
 * 03-flb-services.yaml - Service и Endpoints для доступа ко внешнему (за пределами кластера k8s) elasticserach.
 * 04-flb-ds.yaml - DaemonSet
 
-```bash
+```python
   fluent-bit.conf: |
     [SERVICE] # Сексия
-        Flush         1 # 
+        Flush         1
         Log_Level     info 
         Daemon        off           # Режим демона, когда контейнер умерает, fluent-bit тоже.
         Parsers_File  parsers.conf  # Имя парсер файла
