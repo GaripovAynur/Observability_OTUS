@@ -140,6 +140,7 @@ Fluent Bit логически можно поделить на 6 модулей,
 $ kubectl create ns monitoring
 $ git clone git@github.com:GaripovAynur/Observability_OTUS.git
 $ cd Chart/fluentbit
+$ kubectl creat -f ./
 ~~~~
 
 
@@ -148,7 +149,7 @@ $ cd Chart/fluentbit
 * 03-flb-services.yaml - Service и Endpoints для доступа ко внешнему (за пределами кластера k8s) elasticserach.
 * 04-flb-ds.yaml - DaemonSet
 
-```yaml
+```bash
   fluent-bit.conf: |
     [SERVICE] # Сексия
         Flush         1 # 
